@@ -104,7 +104,7 @@ Perbaharui kunci API Google Maps:
 
 Variabel lingkungan berikut perlu diatur dalam file `.env`:
 
-- `NODE_ENV`: Lingkungan di mana aplikasi berjalan (misalnya, development, production)
+- `NODE_ENV`: Lingkungan di mana aplikasi berjalan (misalnya, development, production, test)
 - `NODE_PORT`: Port di mana server akan berjalan
 - `DB_USERNAME`: Nama pengguna database
 - `DB_PASSWORD`: Kata sandi database
@@ -113,11 +113,30 @@ Variabel lingkungan berikut perlu diatur dalam file `.env`:
 
 ## Struktur Proyek
 
-- `src/`: Berisi kode sumber aplikasi
-  - `models/`: Berisi model database
-  - `controllers/`: Berisi controller untuk menangani permintaan
-  - `routes/`: Berisi definisi rute
-  - `migrations/`: Berisi file migrasi database
+- `__tests__/`: Berisi file pengujian
+    - `locationController.test.js`: Pengujian untuk `LocationController`
+- `config/`: Berisi konfigurasi aplikasi
+    - `config.js`: Konfigurasi aplikasi
+    - `database.js`: Konfigurasi database
+- `controllers/`: Berisi controller untuk menangani permintaan
+    - `LocationController.js`: Controller untuk lokasi
+- `middleware/`: Berisi middleware untuk aplikasi
+    - `errorHandler.js`: Middleware untuk menangani kesalahan
+- `migrations/`: Berisi file migrasi database
+    - `20250121143714-create-location.js`: Migrasi untuk membuat tabel lokasi
+- `models/`: Berisi model database
+    - `index.js`: Inisialisasi model
+    - `location.js`: Model untuk lokasi
+- `public/`: Berisi file statis untuk frontend
+    - `index.html`: Halaman utama frontend
+- `doc/`: Berisi dokumentasi proyek
+- `routes.js`: Berisi definisi rute
+- `swagger.json`: Berisi dokumentasi API Swagger
+- `app.js`: Berisi kode sumber utama aplikasi
+- `.env`: Berisi variabel lingkungan
+- `.gitignore`: Berisi daftar file dan direktori yang diabaikan oleh Git
+- `package.json`: Berisi informasi proyek dan dependensi
+- `README.md`: Berisi dokumentasi proyek
 
 ## Lisensi
 

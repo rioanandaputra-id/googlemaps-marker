@@ -1,0 +1,59 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Google Maps CRUD API",
+        "version": "1.0.0",
+        "description": "API for managing locations."
+    },
+    "paths": {
+        "/api/locations": {
+            "get": {
+                "summary": "Get all locations",
+                "responses": { "200": { "description": "Success" } }
+            },
+            "post": {
+                "summary": "Create a location",
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Location" } } }
+                },
+                "responses": { "200": { "description": "Created" } }
+            }
+        },
+        "/api/locations/{id}": {
+            "put": {
+                "summary": "Update a location",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Location" } } }
+                },
+                "responses": { "200": { "description": "Updated" } }
+            },
+            "delete": {
+                "summary": "Delete a location",
+                "parameters": [
+                    { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+                ],
+                "responses": { "200": { "description": "Deleted" } }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Location": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "address": { "type": "string" },
+                    "lat": { "type": "number" },
+                    "lng": { "type": "number" },
+                    "color": { "type": "string" }
+                },
+                "required": ["name", "address", "lat", "lng", "color"]
+            }
+        }
+    }
+}

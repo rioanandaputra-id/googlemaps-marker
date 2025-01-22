@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps CRUD Sync</title>
+    <!-- API GOOGLE MAPS DEMO -->
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&callback=initMap"
+        defer></script>
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #left-column {
+            width: 30%;
+            padding: 20px;
+            border-right: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+
+        #map {
+            width: 70%;
+            height: 100vh;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        .tooltip {
+            background: white;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="left-column">
+        <h2>Form Input</h2>
+        <label for="name">Nama:</label>
+        <input type="text" id="name" placeholder="Masukkan nama" style="width: 100%;"><br><br>
+
+        <label for="address">Alamat:</label>
+        <input type="text" id="address" placeholder="Masukkan alamat" style="width: 100%;"><br><br>
+
+        <label for="markerColor">Warna Marker:</label>
+        <input type="color" id="markerColor" value="#ff0000" style="width: 100%;"><br><br>
+
+        <button id="addMarker">Buat Marker</button>
+        <button id="saveMarker" style="display: none;">Simpan Data</button>
+        <button id="cancelAction" style="display: none;">Batal</button>
+
+        <h2>Lokasi Tersimpan</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Alamat</th>
+                    <th>Warna</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="locationsTable">
+            </tbody>
+        </table>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let tempMarker = null;
+        let markers = [];
+        let mapMarkers = [];
+        let selectedMarkerId = null;
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: -2.44565, lng: 117.8888 },
+                zoom: 5,
+                mapTypeId: google.maps.MapTypeId.HYBRID,
+            });
+
+            const addressInput = document.getElementById("address");
+            const autocomplete = new google.maps.places.Autocomplete(addressInput);
+
+            autocomplete.addListener("place_changed", () => {
+                const place = autocomplete.getPlace();
+                if (place.geometry && place.geometry.location) {
+                    smoothPanAndZoom(place.geometry.location, 15);
+                } else {
+                    alert("Pilih lokasi yang valid dari daftar!");
+                }
+            });
+
+            document.getElementById("addMarker").addEventListener("click", createMarker);
+            document.getElementById("saveMarker").addEventListener("click", saveMarker);
+            document.getElementById("cancelAction").addEventListener("click", cancelAction);
+
+            fetchMarkersFromAPI();
+        }
+
+        function createMarker() {
+            const name = document.getElementById("name").value.trim();
+            const address = document.getElementById("address").value.trim();
+            const markerColor = document.getElementById("markerColor").value;
+
+            if (!name || !address) {
+                alert("Nama, alamat, dan warna harus diisi!");
+                return;
+            }
+
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address }, (results, status) => {
+                if (status === "OK") {
+                    const location = results[0].geometry.location;
+
+                    if (tempMarker) tempMarker.setMap(null);
+                    tempMarker = new google.maps.Marker({
+                        position: location,
+                        map,
+                        draggable: true,
+                        icon: getMarkerIcon(markerColor),
+                    });
+
+                    smoothPanAndZoom(location, 15);
+
+                    document.getElementById("addMarker").style.display = "none";
+                    document.getElementById("saveMarker").style.display = "inline-block";
+                    document.getElementById("cancelAction").style.display = "inline-block";
+                    alert("Marker dibuat. Silakan sesuaikan posisi pada peta jika diperlukan.");
+                } else {
+                    alert("Geocode gagal: " + status);
+                }
+            });
+        }
+
+        function saveMarker() {
+            const name = document.getElementById("name").value.trim();
+            const address = document.getElementById("address").value.trim();
+            const markerColor = document.getElementById("markerColor").value;
+
+            if (!tempMarker) {
+                alert("Buat marker terlebih dahulu!");
+                return;
+            }
+
+            const markerData = {
+                name,
+                address,
+                lat: tempMarker.getPosition().lat(),
+                lng: tempMarker.getPosition().lng(),
+                color: markerColor,
+            };
+
+            if (selectedMarkerId) {
+                fetch(`http://localhost:3000/api/locations/${selectedMarkerId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(markerData),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const index = markers.findIndex((m) => m.id === selectedMarkerId);
+                            markers[index] = { id: selectedMarkerId, ...markerData };
+                            syncMarkers();
+                            alert("Data berhasil diperbarui!");
+                        }
+                    })
+                    .catch(err => console.error("Gagal memperbarui data:", err));
+            } else {
+                fetch("http://localhost:3000/api/locations", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(markerData),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            markers.push({ id: data.id, ...markerData });
+                            syncMarkers();
+                            alert("Data berhasil disimpan!");
+                        }
+                    })
+                    .catch(err => console.error("Gagal menyimpan data:", err));
+            }
+
+            tempMarker.setMap(null);
+            tempMarker = null;
+            document.getElementById("saveMarker").style.display = "none";
+            document.getElementById("addMarker").style.display = "inline-block";
+            document.getElementById("cancelAction").style.display = "none";
+            clearForm();
+        }
+
+        function cancelAction() {
+            if (tempMarker) tempMarker.setMap(null);
+            tempMarker = null;
+            selectedMarkerId = null;
+
+            document.getElementById("saveMarker").style.display = "none";
+            document.getElementById("addMarker").style.display = "inline-block";
+            document.getElementById("cancelAction").style.display = "none";
+            clearForm();
+        }
+
+        function fetchMarkersFromAPI() {
+            fetch("http://localhost:3000/api/locations")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        markers = data.data.map(marker => ({
+                            id: marker.id,
+                            name: marker.name,
+                            address: marker.address,
+                            lat: parseFloat(marker.lat),
+                            lng: parseFloat(marker.lng),
+                            color: marker.color,
+                        }));
+                        syncMarkers();
+                    }
+                })
+                .catch(err => console.error("Gagal mengambil data:", err));
+        }
+
+        function syncMarkers() {
+            updateTable();
+            clearMapMarkers();
+            markers.forEach(addMarkerToMap);
+        }
+
+        function getMarkerIcon(color) {
+            return {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: color,
+                fillOpacity: 1,
+                strokeWeight: 1,
+                strokeColor: "#000",
+            };
+        }
+
+        function updateTable() {
+            const tableBody = document.getElementById("locationsTable");
+            tableBody.innerHTML = "";
+
+            markers.forEach((marker) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${marker.name}</td>
+                    <td>${marker.address}</td>
+                    <td><span class="color-preview" style="background-color: ${marker.color};"></span></td>
+                    <td>
+                        <button onclick="viewMarker(${marker.id})">Lihat</button>
+                        <button onclick="editMarker(${marker.id})">Ubah</button>
+                        <button onclick="deleteMarker(${marker.id})">Hapus</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function clearMapMarkers() {
+            mapMarkers.forEach((mapMarker) => mapMarker.setMap(null));
+            mapMarkers = [];
+        }
+
+        function addMarkerToMap(markerData) {
+            const marker = new google.maps.Marker({
+                position: { lat: markerData.lat, lng: markerData.lng },
+                map,
+                icon: getMarkerIcon(markerData.color),
+            });
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: `<div class="tooltip"><strong>${markerData.name}</strong><br>${markerData.address}</div>`
+            });
+
+            marker.addListener("click", () => {
+                infoWindow.open(map, marker);
+            });
+
+            marker.addListener("mouseover", () => {
+                infoWindow.open(map, marker);
+            });
+
+            marker.addListener("mouseout", () => {
+                infoWindow.close();
+            });
+
+            mapMarkers.push(marker);
+        }
+
+        function viewMarker(id) {
+            const marker = markers.find((m) => m.id === id);
+            if (!marker) return;
+
+            smoothPanAndZoom({ lat: marker.lat, lng: marker.lng }, 15);
+        }
+
+        function editMarker(id) {
+            const marker = markers.find((m) => m.id === id);
+            if (!marker) return;
+
+            document.getElementById("name").value = marker.name;
+            document.getElementById("address").value = marker.address;
+            document.getElementById("markerColor").value = marker.color;
+            selectedMarkerId = id;
+
+            if (tempMarker) tempMarker.setMap(null);
+            tempMarker = new google.maps.Marker({
+                position: { lat: marker.lat, lng: marker.lng },
+                map,
+                draggable: true,
+                icon: getMarkerIcon(marker.color),
+            });
+
+            smoothPanAndZoom({ lat: marker.lat, lng: marker.lng }, 15);
+            document.getElementById("addMarker").style.display = "none";
+            document.getElementById("saveMarker").textContent = "Ubah Data";
+            document.getElementById("saveMarker").style.display = "inline-block";
+            document.getElementById("cancelAction").style.display = "inline-block";
+        }
+
+        function deleteMarker(id) {
+            if (!confirm("Yakin ingin menghapus data ini?")) return;
+
+            fetch(`http://localhost:3000/api/locations/${id}`, {
+                method: "DELETE",
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        markers = markers.filter((m) => m.id !== id);
+                        syncMarkers();
+                        alert("Data berhasil dihapus!");
+                    }
+                })
+                .catch(err => console.error("Gagal menghapus data:", err));
+        }
+
+        function smoothPanAndZoom(location, zoomLevel, callback = null) {
+            map.panTo(location);
+            const interval = setInterval(() => {
+                const currentZoom = map.getZoom();
+                if (currentZoom === zoomLevel) {
+                    clearInterval(interval);
+                    if (callback) callback();
+                } else {
+                    map.setZoom(currentZoom < zoomLevel ? currentZoom + 1 : currentZoom - 1);
+                }
+            }, 100);
+        }
+
+        function clearForm() {
+            document.getElementById("name").value = "";
+            document.getElementById("address").value = "";
+            document.getElementById("markerColor").value = "#ff0000";
+        }
+    </script>
+</body>
+
+</html>

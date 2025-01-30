@@ -83,9 +83,12 @@ http://localhost:3000
 ```
 
 Catatan: Kunci API Google Maps yang digunakan di frontend adalah kunci demo, sehingga peta mungkin tidak berfungsi dengan benar saat diakses melalui Express.js karena referensi localhost. Buka secara langsung `index.html` klik kanan open with Chrome atau browser lainnya.
+
 ```
 /googlemaps-marker/public/index.html
 ```
+
+![Contoh Gambar](./doc/image-03.png)
 
 Perbaharui kunci API Google Maps:
 ```html
@@ -94,11 +97,11 @@ Perbaharui kunci API Google Maps:
 
 ## Endpoint API
 
-- `GET /markers`: Mengambil semua penanda
-- `POST /markers`: Membuat penanda baru
-- `GET /markers/:id`: Mengambil penanda berdasarkan ID
-- `PUT /markers/:id`: Memperbarui penanda berdasarkan ID
-- `DELETE /markers/:id`: Menghapus penanda berdasarkan ID
+- `GET /api/locations`: Mengambil semua penanda
+- `POST /api/locations`: Membuat penanda baru
+- `GET /api/locations/:id`: Mengambil penanda berdasarkan ID
+- `PUT /api/locations/:id`: Memperbarui penanda berdasarkan ID
+- `DELETE /api/locations/:id`: Menghapus penanda berdasarkan ID
 
 ## Variabel Lingkungan
 
